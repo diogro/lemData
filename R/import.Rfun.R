@@ -24,13 +24,28 @@ ExtractInfo <- function(raw){
 AzExtract <- function(raw, info, landmarks){
 
   a_midline_names <- landmarks$a$midline
-  a_sides_names <- paste(rep(landmarks$a$side, 2), rep(c("E", "D"), each=length(landmarks$a$side)), sep="_")
+  a_sides_names <- paste(rep(landmarks$a$side, 2), 
+                         rep(c("E", "D"), each=length(landmarks$a$side)), sep="_")
 
   z_midline_names <- landmarks$z$midline
-  z_sides_names <- paste(rep(landmarks$z$side, 2), rep(c("D", "E"), each=length(landmarks$z$side)), sep="_")
+  z_sides_names <- paste(rep(landmarks$z$side, 2), 
+                         rep(c("D", "E"), each=length(landmarks$z$side)), sep="_")
 
-  A <- array(NA, dim=c(sum(length(landmarks$a$midline), length(landmarks$a$side)*2), 3, dim(info)[1], 2), dimnames=list( c(a_midline_names, a_sides_names), c("x", "y", "z"), paste(info[,1], info[,4]), c("rep1", "rep2")))
-  Z <- array(NA, dim=c(sum(length(landmarks$z$midline), length(landmarks$z$side)*2), 3, dim(info)[1], 2), dimnames=list( c(z_midline_names, z_sides_names), c("x", "y", "z"), paste(info[,1], info[,4]), c("rep1", "rep2")))
+  A <- array(NA, dim=c(sum(length(landmarks$a$midline), 
+                           length(landmarks$a$side)*2), 
+                       3, dim(info)[1], 2), 
+             dimnames=list( c(a_midline_names, a_sides_names), 
+                            c("x", "y", "z"), 
+                            paste(info[,1], info[,4]), 
+                            c("rep1", "rep2")))
+  
+  Z <- array(NA, dim=c(sum(length(landmarks$z$midline), 
+                           length(landmarks$z$side)*2), 
+                       3, dim(info)[1], 2), 
+             dimnames=list( c(z_midline_names, z_sides_names), 
+                            c("x", "y", "z"), 
+                            paste(info[,1], info[,4]), 
+                            c("rep1", "rep2")))
 
   index <- 0
   for(i in 1:length(raw)){
@@ -75,3 +90,40 @@ AzExtract <- function(raw, info, landmarks){
   }
   list(A=A, Z=Z)
 }
+
+AzUnify <- function(Xa, Xz, comA, comZ, average=FALSE) {
+  A <- Xa[comA,]
+  Z <- Xz[comZ,]
+  #	Xa <- X[a,]
+  #	Xz <- X[z,]
+  A[which(is.na(Z))] <- NA
+  Z[which(is.na(A))] <- NA # making sure both ventral and dorsal of the same LM are NA's whenever one of them is
+  mA <- matrix(apply(A, 2, mean, na.rm=TRUE), byrow=TRUE, nr=nrow(Xa), nc=ncol(Xa))
+  Xac <- Xa-mA # translating all the ventral LM's based on the centroid of the common ones
+  Ac <- scale(A, scale=F)
+  mZ <- matrix(apply(Z, 2, mean, na.rm=TRUE), byrow=TRUE, nr=nrow(Xz), nc=ncol(Xz))
+  Xzc <- Xz-mZ # translating all the dorsal LM's based on the centroid of the common ones
+  Zc <- scale(Z, scale=F)
+  M <- t(na.omit(Zc)) %*% na.omit(Ac) # arbitrarily choosing the Z as the reference
+  SVD <- svd(M)
+  L <- diag(SVD$d) 
+  S <- ifelse(L<0, -1, L)
+  S <- ifelse(L>0, 1, L)
+  RM <- SVD$v %*% S %*% t(SVD$u) # the rotation matrix
+  Xar <- Xac %*% RM # rotate all the translated A LM's
+  full <- rbind(Xzc, Xar)
+  
+  full[comA[which(is.na(full[comA,1]))],] <- full[comZ[which(is.na(full[comA,1]))],]
+  full[comZ[which(is.na(full[comZ,1]))],] <- full[comA[which(is.na(full[comZ,1]))],]
+  if (average==TRUE) {
+    full[comZ,] <- (full[comZ,]+full[comA,])/2
+    full <- full[-match(comA, rownames(full)),]
+  }
+  
+  resid <- Xzc[comZ,] - Xar[comA,]	
+  OSS <- sum(diag(t(resid) %*% resid))
+  rmsd <- sqrt(OSS/(length(comZ) * dim(full[comZ,])[2]))
+  
+  list(unified=full, errors=sqrt(rowSums((Xar[comA,]-Zc)^2)),OSS=OSS,rmds=rmsd)
+}
+
