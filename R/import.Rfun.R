@@ -3,7 +3,7 @@
 ImportAll <- function(files){
   xlstabs <- vector("list", length=length(files))
   names(xlstabs) <- files
-  for (i in 1:length(files)) xlstabs[[i]] <- read.xlsx(files[i], sheetIndex=1, header=F)
+  for (i in 1:length(files)) xlstabs[[i]] <- read.csv(files[i], header=F, as.is = T)
   return(raw_tabs=xlstabs)
 }
 
@@ -34,12 +34,12 @@ AzExtract <- function(raw, info, landmarks){
 
   index <- 0
   for(i in 1:length(raw)){
-    n       <- sum(raw[[i]][,1]=="ID MUSEU", na.rm=T)
-    index   <- (1+tail(index, 1)):(tail(index, 1)+n)
-    inicio  <- which(raw[[i]][,1]=="SUBSPECIES")+1
-    Ai      <- which(raw[[i]][,1]=="A")+1
-    Zi      <- which(raw[[i]][,1]=="Z")+1
-    fim     <- c(inicio[-1]-2, length(raw[[i]][,1]))
+    n      <- sum(raw[[i]][,1]=="ID MUSEU", na.rm=T)
+    index  <- (1+tail(index, 1)):(tail(index, 1)+n)
+    inicio <- which(raw[[i]][,1]=="SUBSPECIES")+1
+    Ai     <- which(raw[[i]][,1]=="A")+1
+    Zi     <- which(raw[[i]][,1]=="Z")+1
+    fim    <- c(inicio[-1]-2, length(raw[[i]][,1]))
 
     for(j in 1:n) {
       a <- as.matrix(raw[[i]][Ai[j]:(Zi[j]-3), c(1, 2:4, 6:8)])
@@ -65,11 +65,11 @@ AzExtract <- function(raw, info, landmarks){
       z.side <- apply(z.side[,-1], 2, as.numeric)
       row.names(z.side) <- names
 
-      A[c(a_midline_names, a_sides_names), , index[j], 1] <-  rbind(a.midline, a.side) [c(a_midline_names, a_sides_names), 1:3]
-      A[c(a_midline_names, a_sides_names), , index[j], 2] <-  rbind(a.midline, a.side) [c(a_midline_names, a_sides_names), 4:6]
+      A[c(a_midline_names, a_sides_names), , index[j], 1] <- rbind(a.midline, a.side) [c(a_midline_names, a_sides_names), 1:3]
+      A[c(a_midline_names, a_sides_names), , index[j], 2] <- rbind(a.midline, a.side) [c(a_midline_names, a_sides_names), 4:6]
 
-      Z[c(z_midline_names, z_sides_names), , index[j], 1] <-  rbind(z.midline, z.side) [c(z_midline_names, z_sides_names), 1:3]
-      Z[c(z_midline_names, z_sides_names), , index[j], 2] <-  rbind(z.midline, z.side) [c(z_midline_names, z_sides_names), 4:6]
+      Z[c(z_midline_names, z_sides_names), , index[j], 1] <- rbind(z.midline, z.side) [c(z_midline_names, z_sides_names), 1:3]
+      Z[c(z_midline_names, z_sides_names), , index[j], 2] <- rbind(z.midline, z.side) [c(z_midline_names, z_sides_names), 4:6]
 
     }
   }
