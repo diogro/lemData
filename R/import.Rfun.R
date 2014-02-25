@@ -8,17 +8,20 @@ ImportAll <- function(files){
 }
 
 ExtractInfo <- function(raw){
-  info <- NULL
-  for (i in 1:length(raw)){
-    xlstab <- raw[[i]]
-    n <- sum(xlstab[,1]=="ID MUSEU", na.rm=T)
-    info.t <- matrix(NA, n, 12, dimnames=list(c(), xlstab[1:12, 1]))
-    info.t[,1] <- as.character(xlstab[1, 2])
-    info.t[,2] <- as.character(xlstab[2, 2])
-    for (j in 3:12) info.t[,j] <- as.character(xlstab[which(xlstab==as.character(xlstab[j, 1])), 2])
-    info <- rbind(info, info.t)
+  info = ldply(raw, InfoFromDF)
+  info$.id = NULL
+  return(info)
+}
+
+InfoFromDF <- function(xlstab, num.info = 12){
+  n <- sum(xlstab[,1]=="ID MUSEU", na.rm=T) # number of individuals
+  info.t <- matrix(NA, n, num.info, dimnames=list(c(), xlstab[1:num.info, 1]))
+  info.t[,1] <- as.character(xlstab[1, 2])
+  info.t[,2] <- as.character(xlstab[2, 2])
+  for (j in 3:num.info){ 
+    info.t[,j] <- as.character(xlstab[which(xlstab==as.character(xlstab[j, 1])), 2])
   }
-  return(as.data.frame(info))
+  return(info.t)
 }
 
 AzExtract <- function(raw, info, landmarks){
@@ -88,7 +91,7 @@ AzExtract <- function(raw, info, landmarks){
 
     }
   }
-  list(A=A, Z=Z)
+  return(list(A=A, Z=Z))
 }
 
 AzUnify <- function(Xa, Xz, comA, comZ, average=FALSE) {
@@ -116,7 +119,7 @@ AzUnify <- function(Xa, Xz, comA, comZ, average=FALSE) {
   full[comA[which(is.na(full[comA,1]))],] <- full[comZ[which(is.na(full[comA,1]))],]
   full[comZ[which(is.na(full[comZ,1]))],] <- full[comA[which(is.na(full[comZ,1]))],]
   if (average==TRUE) {
-    full[comZ,] <- (full[comZ,]+full[comA,])/2
+    full[comZ,] <- (full[comZ,] + full[comA,])/2
     full <- full[-match(comA, rownames(full)),]
   }
   
@@ -126,4 +129,3 @@ AzUnify <- function(Xa, Xz, comA, comZ, average=FALSE) {
   
   list(unified=full, errors=sqrt(rowSums((Xar[comA,]-Zc)^2)),OSS=OSS,rmds=rmsd)
 }
-
